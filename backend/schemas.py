@@ -44,3 +44,26 @@ class GroupOut(BaseModel):
 # Define the JoinRequest schema for validating group join requests
 class JoinRequest(BaseModel):
     user_id: uuid.UUID
+
+# Define the DayCreate schema for validating new itinerary day requests
+class DayCreate(BaseModel):
+    date: date
+    location: str
+    summary: Optional[str] = None
+
+# Define the DayUpdate schema for validating itinerary day edits (all fields optional)
+class DayUpdate(BaseModel):
+    date: Optional[date] = None
+    location: Optional[str] = None
+    summary: Optional[str] = None
+
+# Define the DayOut schema for serializing itinerary day data in responses
+class DayOut(BaseModel):
+    id: uuid.UUID
+    group_id: uuid.UUID
+    date: date
+    location: str
+    summary: Optional[str]
+
+    class Config:
+        from_attributes = True

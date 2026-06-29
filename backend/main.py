@@ -10,8 +10,8 @@ from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import GroupMember, TripGroup, User
-from schemas import GroupCreate, GroupOut, JoinRequest, LoginRequest, UserOut
+from models import GroupMember, ItineraryDay, TripGroup, User
+from schemas import DayCreate, DayOut, DayUpdate, GroupCreate, GroupOut, JoinRequest, LoginRequest, UserOut
 
 # Create a FastAPI application instance
 app = FastAPI()
@@ -120,3 +120,60 @@ def join_group(group_id: uuid.UUID, payload: JoinRequest, db: Session = Depends(
         db.commit()
 
     return {"status": "joined"}
+
+
+# List a group's itinerary days in date order (the broad day-by-day plan view)
+@app.get("/groups/{group_id}/days", response_model=List[DayOut])
+def list_days(group_id: uuid.UUID, db: Session = Depends(get_db)):
+    group = db.query(TripGroup).filter(TripGroup.id == group_id).first()
+    if group is None:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    return (
+        db.query(ItineraryDay)
+        .filter(ItineraryDay.group_id == group_id)
+        .order_by(ItineraryDay.date)
+        .all()
+    )
+
+
+# Add a day to a group's itinerary
+@app.post("/groups/{group_id}/days", response_model=DayOut)
+def create_day(group_id: uuid.UUID, payload: DayCreate, db: Session = Depends(get_db)):
+    group = db.query(TripGroup).filter(TripGroup.id == group_id).first()
+    if group is None:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    existing = (
+        db.query(ItineraryDay)
+        .filter(ItineraryDay.group_id == group_id, ItineraryDay.date == payload.date)
+        .first()
+    )
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="A day already exists for this date")
+
+    day = ItineraryDay(
+        group_id=group_id,
+        date=payload.date,
+        location=payload.location,
+        summary=payload.summary,
+    )
+    db.add(day)
+    db.commit()
+    db.refresh(day)
+    return day
+
+
+# Partially update a day (only fields included in the request body are changed)
+@app.patch("/days/{day_id}", response_model=DayOut)
+def update_day(day_id: uuid.UUID, payload: DayUpdate, db: Session = Depends(get_db)):
+    day = db.query(ItineraryDay).filter(ItineraryDay.id == day_id).first()
+    if day is None:
+        raise HTTPException(status_code=404, detail="Day not found")
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(day, field, value)
+
+    db.commit()
+    db.refresh(day)
+    return day
