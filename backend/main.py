@@ -1,3 +1,6 @@
+'''
+This module defines the FastAPI application and its endpoints.
+'''
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, text
@@ -35,7 +38,6 @@ def health():
 @app.get("/db-check")
 def db_check(db: Session = Depends(get_db)):
     db.execute(text("SELECT 1"))
-    print("Selection returns:", db.execute(text("SELECT 1")).fetchall())
     return {"db": "connected"}
 
 # Define a login endpoint that handles user authentication and registration

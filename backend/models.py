@@ -1,10 +1,15 @@
+'''
+This module defines the SQLAlchemy models that mirror schema.sql.
+They just let SQLAlchemy build queries from python instead of writing raw SQL queries.
+'''
 from sqlalchemy import Column, Date, ForeignKey, Integer, Text, Time, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID
 from sqlalchemy.orm import declarative_base
 
+# Define the base class for SQLAlchemy models
 Base = declarative_base()
 
-
+# Define the User model representing the "users" table in the database
 class User(Base):
     __tablename__ = "users"
 
@@ -12,7 +17,7 @@ class User(Base):
     name = Column(Text, nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
 
-
+# Define the TripGroup model representing the "trip_groups" table in the database
 class TripGroup(Base):
     __tablename__ = "trip_groups"
 
@@ -24,15 +29,16 @@ class TripGroup(Base):
     end_date = Column(Date)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
 
-
+# Define the GroupMember model representing the "group_members" table in the database
 class GroupMember(Base):
     __tablename__ = "group_members"
+    # __table_args__ = (UniqueConstraint("group_id", "user_id"),)
 
     group_id = Column(UUID(as_uuid=True), ForeignKey("trip_groups.id", ondelete="CASCADE"), primary_key=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     joined_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()"))
 
-
+# Define the ItineraryDay model representing the "itinerary_days" table in the database
 class ItineraryDay(Base):
     __tablename__ = "itinerary_days"
     __table_args__ = (UniqueConstraint("group_id", "date"),)
@@ -43,7 +49,7 @@ class ItineraryDay(Base):
     location = Column(Text, nullable=False)
     summary = Column(Text)
 
-
+# Define the ItineraryItem model representing the "itinerary_items" table in the database
 class ItineraryItem(Base):
     __tablename__ = "itinerary_items"
 
