@@ -70,6 +70,7 @@ def list_groups(db: Session = Depends(get_db)):
 # Create a trip group and add its creator as the first member
 @app.post("/groups", response_model=GroupOut)
 def create_group(payload: GroupCreate, db: Session = Depends(get_db)):
+    # Find the creator user by ID to ensure they exist before creating the group
     creator = db.query(User).filter(User.id == payload.created_by).first()
     if creator is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -102,6 +103,7 @@ def get_group(group_id: uuid.UUID, db: Session = Depends(get_db)):
 # Join a trip group; joining a group you're already in is a no-op
 @app.post("/groups/{group_id}/join")
 def join_group(group_id: uuid.UUID, payload: JoinRequest, db: Session = Depends(get_db)):
+    # Find the group and user by ID to ensure it exists before adding the user as a member
     group = db.query(TripGroup).filter(TripGroup.id == group_id).first()
     if group is None:
         raise HTTPException(status_code=404, detail="Group not found")
@@ -140,10 +142,12 @@ def list_days(group_id: uuid.UUID, db: Session = Depends(get_db)):
 # Add a day to a group's itinerary
 @app.post("/groups/{group_id}/days", response_model=DayOut)
 def create_day(group_id: uuid.UUID, payload: DayCreate, db: Session = Depends(get_db)):
+    # Find the group by ID to ensure it exists before adding a day
     group = db.query(TripGroup).filter(TripGroup.id == group_id).first()
     if group is None:
         raise HTTPException(status_code=404, detail="Group not found")
 
+    # Check if a day already exists for the given date in the group to enforce uniqueness
     existing = (
         db.query(ItineraryDay)
         .filter(ItineraryDay.group_id == group_id, ItineraryDay.date == payload.date)
@@ -152,6 +156,7 @@ def create_day(group_id: uuid.UUID, payload: DayCreate, db: Session = Depends(ge
     if existing is not None:
         raise HTTPException(status_code=409, detail="A day already exists for this date")
 
+    # Create a new ItineraryDay object and add it to the database
     day = ItineraryDay(
         group_id=group_id,
         date=payload.date,
@@ -167,10 +172,12 @@ def create_day(group_id: uuid.UUID, payload: DayCreate, db: Session = Depends(ge
 # Partially update a day (only fields included in the request body are changed)
 @app.patch("/days/{day_id}", response_model=DayOut)
 def update_day(day_id: uuid.UUID, payload: DayUpdate, db: Session = Depends(get_db)):
+    # Find the day by ID to ensure it exists before updating
     day = db.query(ItineraryDay).filter(ItineraryDay.id == day_id).first()
     if day is None:
         raise HTTPException(status_code=404, detail="Day not found")
 
+    # Update only the fields that are included in the request body (exclude_unset=True)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(day, field, value)
 

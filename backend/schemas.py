@@ -1,8 +1,8 @@
 '''
 This module defines the Pydantic schemas used for request validation and response serialization.
 '''
+import datetime
 import uuid
-from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -25,8 +25,8 @@ class GroupCreate(BaseModel):
     name: str
     description: Optional[str] = None
     created_by: uuid.UUID
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: Optional[datetime.date] = None
+    end_date: Optional[datetime.date] = None
 
 # Define the GroupOut schema for serializing trip group data in responses
 class GroupOut(BaseModel):
@@ -34,9 +34,9 @@ class GroupOut(BaseModel):
     name: str
     description: Optional[str]
     created_by: uuid.UUID
-    start_date: Optional[date]
-    end_date: Optional[date]
-    created_at: datetime
+    start_date: Optional[datetime.date]
+    end_date: Optional[datetime.date]
+    created_at: datetime.datetime
 
     class Config:
         from_attributes = True
@@ -47,13 +47,13 @@ class JoinRequest(BaseModel):
 
 # Define the DayCreate schema for validating new itinerary day requests
 class DayCreate(BaseModel):
-    date: date
+    date: datetime.date
     location: str
     summary: Optional[str] = None
 
 # Define the DayUpdate schema for validating itinerary day edits (all fields optional)
 class DayUpdate(BaseModel):
-    date: Optional[date] = None
+    date: Optional[datetime.date] = None
     location: Optional[str] = None
     summary: Optional[str] = None
 
@@ -61,7 +61,7 @@ class DayUpdate(BaseModel):
 class DayOut(BaseModel):
     id: uuid.UUID
     group_id: uuid.UUID
-    date: date
+    date: datetime.date
     location: str
     summary: Optional[str]
 

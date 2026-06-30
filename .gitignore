@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment variables (contains DB credentials)
+.env
+
+# Node / frontend
+node_modules/
+dist/
+.vercel/
+
+# Editor
+.vscode/
+.idea/
