@@ -67,3 +67,30 @@ class DayOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Define the ItemCreate schema for validating new itinerary item requests
+class ItemCreate(BaseModel):
+    title: str
+    added_by: uuid.UUID
+    time: Optional[datetime.time] = None
+    notes: Optional[str] = None
+
+# Define the ItemUpdate schema for validating itinerary item edits (all fields optional)
+class ItemUpdate(BaseModel):
+    title: Optional[str] = None
+    time: Optional[datetime.time] = None
+    notes: Optional[str] = None
+    order_index: Optional[int] = None
+
+# Define the ItemOut schema for serializing itinerary item data in responses
+class ItemOut(BaseModel):
+    id: uuid.UUID
+    day_id: uuid.UUID
+    time: Optional[datetime.time]
+    title: str
+    notes: Optional[str]
+    added_by: Optional[uuid.UUID]
+    order_index: int
+
+    class Config:
+        from_attributes = True

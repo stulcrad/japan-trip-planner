@@ -10,8 +10,20 @@ from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import GroupMember, ItineraryDay, TripGroup, User
-from schemas import DayCreate, DayOut, DayUpdate, GroupCreate, GroupOut, JoinRequest, LoginRequest, UserOut
+from models import GroupMember, ItineraryDay, ItineraryItem, TripGroup, User
+from schemas import (
+    DayCreate,
+    DayOut,
+    DayUpdate,
+    GroupCreate,
+    GroupOut,
+    ItemCreate,
+    ItemOut,
+    ItemUpdate,
+    JoinRequest,
+    LoginRequest,
+    UserOut,
+)
 
 # Create a FastAPI application instance
 app = FastAPI()
@@ -184,3 +196,81 @@ def update_day(day_id: uuid.UUID, payload: DayUpdate, db: Session = Depends(get_
     db.commit()
     db.refresh(day)
     return day
+
+
+# List a day's itinerary items in manual order
+@app.get("/days/{day_id}/items", response_model=List[ItemOut])
+def list_items(day_id: uuid.UUID, db: Session = Depends(get_db)):
+    # Find the day by ID to ensure it exists before listing its items
+    day = db.query(ItineraryDay).filter(ItineraryDay.id == day_id).first()
+    if day is None:
+        raise HTTPException(status_code=404, detail="Day not found")
+
+    return (
+        db.query(ItineraryItem)
+        .filter(ItineraryItem.day_id == day_id)
+        .order_by(ItineraryItem.order_index)
+        .all()
+    )
+
+
+# Add an item to a day's itinerary, appended after any existing items
+@app.post("/days/{day_id}/items", response_model=ItemOut)
+def create_item(day_id: uuid.UUID, payload: ItemCreate, db: Session = Depends(get_db)):
+    # Find the day and user by ID to ensure they exist before adding the item
+    day = db.query(ItineraryDay).filter(ItineraryDay.id == day_id).first()
+    if day is None:
+        raise HTTPException(status_code=404, detail="Day not found")
+
+    user = db.query(User).filter(User.id == payload.added_by).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Determine the next order index for the new item by finding the max order_index of existing items for the day
+    max_order = (
+        db.query(func.max(ItineraryItem.order_index))
+        .filter(ItineraryItem.day_id == day_id)
+        .scalar()
+    )
+    # max_order will be None if there are no existing items for the day
+    next_order = 0 if max_order is None else max_order + 1
+
+    item = ItineraryItem(
+        day_id=day_id,
+        time=payload.time,
+        title=payload.title,
+        notes=payload.notes,
+        added_by=payload.added_by,
+        order_index=next_order,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+# Partially update an item (only fields included in the request body are changed)
+@app.patch("/items/{item_id}", response_model=ItemOut)
+def update_item(item_id: uuid.UUID, payload: ItemUpdate, db: Session = Depends(get_db)):
+    # Find the item by ID to ensure it exists before updating
+    item = db.query(ItineraryItem).filter(ItineraryItem.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(item, field, value)
+
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+# Delete an item
+@app.delete("/items/{item_id}", status_code=204)
+def delete_item(item_id: uuid.UUID, db: Session = Depends(get_db)):
+    item = db.query(ItineraryItem).filter(ItineraryItem.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    db.delete(item)
+    db.commit()
